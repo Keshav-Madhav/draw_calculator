@@ -3,11 +3,11 @@ import { SWATCHES } from "@/constanst"
 import { ColorSwatch, Group } from "@mantine/core"
 import { Button } from "@/components/ui/button"
 import axios from "axios";
-
+import Draggable from "react-draggable";
 interface Response {
   expr: string
   result: string
-  assing: boolean
+  assign: boolean
 }
 
 interface GeneratedResult {
@@ -21,14 +21,34 @@ const Home = () => {
   const [color, setColor] = useState(SWATCHES[1])
   const [reset, setReset] = useState(false)
   const [result, setResult] = useState<GeneratedResult>()
+  const [expression, setExpression] = useState<string[]>([])
+  const [LatexPosition, setLatexPosition] = useState({x: 10, y: 100})
   const [dictOfVars, setDictOfVars] = useState({})
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if(reset){
       resetCanvas()
       setReset(false)
+      setExpression([])
+      setResult(undefined)
+      setDictOfVars({})
     }
   }, [reset]);
+
+  useEffect(() => {
+    if(result){
+      renderLatexToCanvas(result.expression, result.answer)
+    }
+  }, [result])
+
+  useEffect(() => {
+    if(expression.length > 0 && window.MathJax){
+      setTimeout(() => {
+        window.MathJax.Hub.Queue(["Typeset", window.MathJax.Hub])
+      }, 0)
+    }
+  }, [expression])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -41,6 +61,21 @@ const Home = () => {
     canvas.height = window.innerHeight - canvas.offsetTop;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
+
+    const script = document.createElement('script');
+    script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"
+    script.async = true;
+    document.head.appendChild(script);
+
+    script.onload = () => {
+      window.MathJax.Hub.Config({
+        tex2jax: {inlineMath: [['$', '$'], ['\\(', '\\)']]}
+      })
+    }
+
+    return () => {
+      document.head.removeChild(script);
+    }
   }, []);
   
   const resetCanvas = () => {
@@ -86,9 +121,16 @@ const Home = () => {
     ctx.stroke();
   }
 
+  const renderLatexToCanvas = (express: string, answer: string) => {
+    const latex = `\\(\\LARGE{${express} = ${answer}}\\)`
+    setExpression([...expression, latex])
+  }
+
   const sendData = async () => {
     const canvas = canvasRef.current
     if (!canvas) return;
+
+    setLoading(true)
 
     const response = await axios({
       method: 'POST',
@@ -99,9 +141,46 @@ const Home = () => {
       }
     });
 
-    const resp = await response.data 
-    setResult(resp)
-    console.log(resp)
+    const resp = await response.data;
+    resp.data.forEach((data: Response) => {
+      if(data.assign) {
+        setDictOfVars({...dictOfVars, [data.expr]: data.result})
+      }
+    });
+
+    setLoading(false)
+    
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx!.getImageData(0, 0, canvas.width, canvas.height);
+    let minX = canvas.width, maxY = 0;
+    let minY = canvas.height;
+    for (let y = 0; y < canvas.height; y++) {
+        for (let x = 0; x < canvas.width; x++) {
+            const i = (y * canvas.width + x) * 4;
+            if (imageData.data[i + 3] > 0) {  // If pixel is not transparent
+                minX = Math.min(minX, x);
+                maxY = Math.max(maxY, y);
+                minY = Math.min(minY, y);
+            }
+        }
+    }
+    const LeftX = minX;
+    const bottomLeftY = maxY;
+    const topLeftY = minY;
+    if(bottomLeftY > window.innerHeight - 100) {
+      setLatexPosition({ x: LeftX, y: topLeftY });
+    } else {
+      setLatexPosition({ x: LeftX, y: bottomLeftY });
+    }
+
+    resp.data.forEach((data: Response) => {
+        setTimeout(() => {
+            setResult({
+                expression: data.expr,
+                answer: data.result
+            });
+        }, 1000);
+    });
   }
 
   return (
@@ -133,7 +212,7 @@ const Home = () => {
         variant='default'
         color="black"
       >
-        Calculate
+        {loading ? 'Loading...' : 'Calculate'}
       </Button>
     </div>
       <canvas 
@@ -146,6 +225,14 @@ const Home = () => {
         onMouseOut={stopDrawing}
         onMouseMove={draw}
       />
+
+      {expression && expression.map((latex, index) => (
+        <Draggable key={index} defaultPosition={{x: LatexPosition.x, y: LatexPosition.y}} onStop={(_, data) => setLatexPosition({x: data.x, y: data.y})}> 
+          <div className="absolute z-10 text-white">
+            <div className="latex-content">{latex}</div>
+          </div>
+        </Draggable>
+      ))}
     </>
   )
 }
