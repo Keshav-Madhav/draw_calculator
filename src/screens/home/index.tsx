@@ -21,7 +21,7 @@ const Home = () => {
   const [color, setColor] = useState(SWATCHES[1])
   const [reset, setReset] = useState(false)
   const [result, setResult] = useState<GeneratedResult>()
-  const [expression, setExpression] = useState<string[]>([])
+  const [expression, setExpression] = useState<{latex: string, value: string}[]>([{latex: 'hehehehe', value: 'hehehehe'}])
   const [LatexPosition, setLatexPosition] = useState({x: 10, y: 100})
   const [dictOfVars, setDictOfVars] = useState({})
   const [loading, setLoading] = useState(false)
@@ -121,9 +121,37 @@ const Home = () => {
     ctx.stroke();
   }
 
-  const renderLatexToCanvas = (express: string, answer: string) => {
-    const latex = `\\(\\LARGE{${express} = ${answer}}\\)`
-    setExpression([...expression, latex])
+  const renderLatexToCanvas = (express: string, answer: string | number): void => {
+    // Function to add spaces between words and around operators
+    const addSpaces = (str: string): string => {
+      return str.replace(/(\w+)([+\-*/=])?/g, (_, word, operator) => {
+        if (operator) {
+          return `\\;${word}\\;${operator}\\;`;
+        }
+        return `\\;${word}\\;`;
+      }).trim();
+    };
+  
+    // Function to handle line breaks and indentation for equal signs
+    const addLineBreaks = (str: string): string => {
+      // Replace all equal signs with line break and indentation
+      return str.replace(/=/g, '\\;=\\\\ \\quad');
+    };
+  
+    // Format the expression and answer
+    const formattedExpress: string = addLineBreaks(addSpaces(express));
+    const formattedAnswer = typeof answer === 'number' ? answer : addLineBreaks(addSpaces(answer));
+  
+    // Construct the final LaTeX string
+    const latex: string = `\\(\\LARGE{${formattedExpress} =\\\\ \\quad${formattedAnswer}}\\)`;
+  
+    // Append the LaTeX to the expression list
+    setExpression((prevExpression) => [...prevExpression, {latex, value: `${express} = ${answer}`}]);
+  };  
+
+  const handleClick = (latex: string) => {
+    navigator.clipboard.writeText(latex);
+    alert('Copied to clipboard');
   }
 
   const sendData = async () => {
@@ -227,9 +255,29 @@ const Home = () => {
       />
 
       {expression && expression.map((latex, index) => (
-        <Draggable key={index} defaultPosition={{x: LatexPosition.x, y: LatexPosition.y}} onStop={(_, data) => setLatexPosition({x: data.x, y: data.y})}> 
-          <div className="absolute z-10 text-white">
-            <div className="latex-content">{latex}</div>
+        <Draggable 
+          key={index} 
+          defaultPosition={{x: LatexPosition.x, y: LatexPosition.y}} 
+          onStop={(_, data) => setLatexPosition({x: data.x, y: data.y})}
+        > 
+          <div className="absolute flex flex-col gap-2">
+            <div className="flex gap-2">
+              <div 
+                className="text-xs text-gray-300 bg-transparent border w-fit px-2 rounded-full hover:bg-gray-500/20 cursor-pointer"
+                onClick={() => handleClick(latex.value)}
+              >
+                Copy
+              </div>
+
+              <div 
+                className="text-xs text-gray-300 bg-transparent border w-fit px-2 rounded-full hover:bg-gray-500/20 cursor-pointer"
+                onClick={() => setExpression(expression.filter((_, i) => i !== index))}
+              >
+                Remove
+              </div>
+            </div>
+
+            <div className="latex-content z-10 text-white">{latex.latex}</div>
           </div>
         </Draggable>
       ))}
