@@ -18,7 +18,9 @@ const browserRouter = createBrowserRouter(paths);
 const App = () => {
   return (
     <MantineProvider>
-      <RouterProvider router={browserRouter} />
+      <div className="w-dvw h-dvh overflow-hidden">
+        <RouterProvider router={browserRouter} />
+      </div>
     </MantineProvider>
   )
 }

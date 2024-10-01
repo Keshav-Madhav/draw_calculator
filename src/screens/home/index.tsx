@@ -30,6 +30,18 @@ const Home = () => {
   const [loading, setLoading] = useState(false)
   const [lastStroke, setLastStroke] = useState<ImageData | null>(null)
   const [undoneStroke, setUndoneStroke] = useState<ImageData | null>(null)
+  const [insertText, setInsertText] = useState(false)
+  const [text, setText] = useState('')
+  const [inputWidth, setInputWidth] = useState(240);
+  const [inputPosition, setInputPosition] = useState({ x: 10, y: 50 });
+  const measureRef = useRef<HTMLSpanElement>(null)
+
+  useEffect(() => {
+    if (measureRef.current) {
+      const width = measureRef.current.offsetWidth;
+      setInputWidth(Math.max(240, width + 20)); // Add some padding
+    }
+  }, [text]);
 
   useEffect(() => {
     if(reset){
@@ -39,6 +51,12 @@ const Home = () => {
       setDictOfVars({})
       setLastStroke(null)
       setUndoneStroke(null)
+      setColor(SWATCHES[1])
+      setStrokeWidth(3)
+      setText('')
+      setInsertText(false)
+      setInputWidth(240)
+      setInputPosition({ x: 10, y: 50 })
     }
   }, [reset]);
 
@@ -208,6 +226,41 @@ const Home = () => {
     alert('Copied to clipboard');
   }
 
+  const drawTextOnCanvas = (text: string, x: number, y: number) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Set the font properties
+    ctx.font = '20px Arial'; // Adjust size and font as needed
+    ctx.fillStyle = color; // Use the current selected color
+
+    // Draw the text on the canvas
+    ctx.fillText(text, x, y);
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      // Get the current position of the input field
+      const canvasRect = canvasRef.current?.getBoundingClientRect();
+      if (canvasRect) {
+        const x = inputPosition.x - canvasRect.left + 9;
+        const y = inputPosition.y - canvasRect.top + 78;
+
+        // Draw the text on the canvas
+        drawTextOnCanvas(text, x, y);
+
+        // Reset the input field and hide it
+        setText('');
+        setInsertText(false);
+        setInputPosition({ x: 10, y: 50 });
+        setInputWidth(240);
+      }
+    }
+  };
+
   const downloadCanvasAsImage = () => {
     const canvas = canvasRef.current
     if (!canvas) return;
@@ -286,6 +339,16 @@ const Home = () => {
       >
         <Image src="/undo.png" alt="Reset" className="w-10 h-12" />
         <p className="font-sans text-3xl text-[#574a3a]">Reset</p>
+      </Button>
+      
+      <Button 
+        onClick={() => setInsertText(true)}
+        className="z-20 bg-black w-fit h-10 flex gap-1 items-center"
+        variant='default'
+        color="black"
+      >
+        <Image src="/text.png" alt="Text" className="w-7 h-7" />
+        <p className="font-sans text-3xl text-[#d6a426]">Text</p>
       </Button>
 
       <Button
@@ -377,12 +440,53 @@ const Home = () => {
               >
                 Remove
               </div>
+
+              <div 
+                className="text-xs text-gray-300 bg-transparent border w-fit px-2 rounded-full hover:bg-gray-500/20 cursor-pointer"
+                onClick={() => {
+                  drawTextOnCanvas(`Response: ${latex.value}`, LatexPosition.x, LatexPosition.y)
+                  setExpression(expression.filter((_, i) => i !== index))
+                }}
+              >
+                Insert
+              </div>
             </div>
 
-            <div className="latex-content z-10 text-white">{latex.latex}</div>
+            <div className="latex-content z-10 text-white cursor-move">{latex.latex}</div>
           </div>
         </Draggable>
       ))}
+
+      {insertText && (
+        <Draggable 
+          defaultPosition={{x: inputPosition.x, y: inputPosition.y}} 
+          onStop={(_, data) => setInputPosition({x: data.x, y: data.y})}
+        >
+          <div className="relative cursor-move">
+            <input 
+              type="text" 
+              className="absolute h-fit bg-transparent border rounded-lg z-20 text-white text-xl px-2"
+              style={{
+                width: `${inputWidth}px`,
+                color: color,
+                borderColor: color
+              }}
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              title="Enter text to insert"
+              placeholder="Enter text to insert"
+            />
+            <p className="absolute top-8 text-gray-500">Press Enter to insert.</p>
+            <span 
+              ref={measureRef}
+              className="absolute invisible whitespace-pre text-xl px-2"
+            >
+              {text || "Enter text to insert"}
+            </span>
+          </div>
+        </Draggable>
+      )}
     </>
   )
 }
