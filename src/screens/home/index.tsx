@@ -28,6 +28,8 @@ const Home = () => {
   const [LatexPosition, setLatexPosition] = useState({x: 10, y: 100})
   const [dictOfVars, setDictOfVars] = useState({})
   const [loading, setLoading] = useState(false)
+  const [lastStroke, setLastStroke] = useState<ImageData | null>(null)
+  const [undoneStroke, setUndoneStroke] = useState<ImageData | null>(null)
 
   useEffect(() => {
     if(reset){
@@ -35,6 +37,8 @@ const Home = () => {
       setReset(false)
       setResult(undefined)
       setDictOfVars({})
+      setLastStroke(null)
+      setUndoneStroke(null)
     }
   }, [reset]);
 
@@ -79,6 +83,22 @@ const Home = () => {
       document.head.removeChild(script);
     }
   }, []);
+
+  useEffect(() => {
+    window.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'z' && lastStroke) {
+        console.log('undo')
+        undo()
+      } else if (e.ctrlKey && e.key === 'y' && undoneStroke) {
+        console.log('redo')
+        redo()
+      }
+    })
+
+    return () => {
+      window.removeEventListener('keydown', () => {})
+    }
+  }, [])
   
   const resetCanvas = () => {
     const canvas = canvasRef.current
@@ -90,6 +110,30 @@ const Home = () => {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
   }
 
+  const undo = () => {
+    const canvas = canvasRef.current
+    if (!canvas || !lastStroke) return;
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return;
+
+    setUndoneStroke(ctx.getImageData(0, 0, canvas.width, canvas.height))
+    ctx.putImageData(lastStroke, 0, 0)
+    setLastStroke(null)
+  }
+
+  const redo = () => {
+    const canvas = canvasRef.current
+    if (!canvas || !undoneStroke) return;
+
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return;
+
+    setLastStroke(ctx.getImageData(0, 0, canvas.width, canvas.height))
+    ctx.putImageData(undoneStroke, 0, 0)
+    setUndoneStroke(null)
+  }
+
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return;
@@ -99,6 +143,10 @@ const Home = () => {
 
     canvas.style.background = 'black';
     canvas.style.cursor = 'crosshair';
+
+    // Save the current canvas state before starting a new stroke
+    setLastStroke(ctx.getImageData(0, 0, canvas.width, canvas.height))
+    setUndoneStroke(null)
 
     ctx.beginPath();
     ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
