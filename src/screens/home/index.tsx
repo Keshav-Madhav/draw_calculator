@@ -21,7 +21,7 @@ const Home = () => {
   const [color, setColor] = useState(SWATCHES[1])
   const [reset, setReset] = useState(false)
   const [result, setResult] = useState<GeneratedResult>()
-  const [expression, setExpression] = useState<{latex: string, value: string}[]>([{latex: 'hehehehe', value: 'hehehehe'}])
+  const [expression, setExpression] = useState<{latex: string, value: string}[]>([])
   const [LatexPosition, setLatexPosition] = useState({x: 10, y: 100})
   const [dictOfVars, setDictOfVars] = useState({})
   const [loading, setLoading] = useState(false)
@@ -30,7 +30,6 @@ const Home = () => {
     if(reset){
       resetCanvas()
       setReset(false)
-      setExpression([])
       setResult(undefined)
       setDictOfVars({})
     }
@@ -154,6 +153,16 @@ const Home = () => {
     alert('Copied to clipboard');
   }
 
+  const downloadCanvasAsImage = () => {
+    const canvas = canvasRef.current
+    if (!canvas) return;
+
+    const link = document.createElement('a');
+    link.download = 'canvas-image.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
   const sendData = async () => {
     const canvas = canvasRef.current
     if (!canvas) return;
@@ -213,7 +222,7 @@ const Home = () => {
 
   return (
     <>
-    <div className="grid grid-cols-3 gap-6 py-2 px-6">
+    <div className="grid grid-cols-[1fr,2fr,1fr,1fr] gap-6 py-2 px-6">
       <Button
         onClick={() => setReset(true)}
         className="z-20 bg-black text-white"
@@ -223,7 +232,7 @@ const Home = () => {
         Reset
       </Button>
 
-      <Group className="z-20">
+      <Group className="z-20 flex flex-nowrap">
         {SWATCHES.map((swatch, index) => (
           <ColorSwatch
             key={index}
@@ -233,6 +242,15 @@ const Home = () => {
           />
         ))}
       </Group>  
+
+      <Button
+        onClick={downloadCanvasAsImage}
+        className="z-20 bg-black text-white"
+        variant='default'
+        color="black"
+      >
+        Download
+      </Button>
       
       <Button
         onClick={sendData}
