@@ -85,6 +85,8 @@ const Home = () => {
     canvas.height = window.innerHeight - canvas.offsetTop;
     ctx.lineWidth = 3;
     ctx.lineCap = 'round';
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     const script = document.createElement('script');
     script.src = "https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.9/MathJax.js?config=TeX-MML-AM_CHTML"
@@ -125,7 +127,9 @@ const Home = () => {
     const ctx = canvas.getContext('2d')
     if (!ctx) return;
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0, 0, canvas.width, canvas.height)
+    ctx.fillStyle = 'black'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
   }
 
   const undo = () => {
@@ -152,7 +156,7 @@ const Home = () => {
     setUndoneStroke(null)
   }
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current
     if (!canvas) return;
 
@@ -162,12 +166,21 @@ const Home = () => {
     canvas.style.background = 'black';
     canvas.style.cursor = 'crosshair';
 
-    // Save the current canvas state before starting a new stroke
     setLastStroke(ctx.getImageData(0, 0, canvas.width, canvas.height))
     setUndoneStroke(null)
 
     ctx.beginPath();
-    ctx.moveTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+    
+    if (e.type === 'mousedown') {
+      const mouseEvent = e as React.MouseEvent<HTMLCanvasElement>;
+      ctx.moveTo(mouseEvent.nativeEvent.offsetX, mouseEvent.nativeEvent.offsetY);
+    } else if (e.type === 'touchstart') {
+      const touchEvent = e as React.TouchEvent<HTMLCanvasElement>;
+      const touch = touchEvent.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      ctx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    }
+
     setIsDrawing(true);
   }
 
@@ -175,7 +188,7 @@ const Home = () => {
     setIsDrawing(false);
   }
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
     if (!isDrawing) return;
 
     const canvas = canvasRef.current
@@ -186,7 +199,17 @@ const Home = () => {
 
     ctx.strokeStyle = color;
     ctx.lineWidth = strokeWidth;
-    ctx.lineTo(e.nativeEvent.offsetX, e.nativeEvent.offsetY);
+
+    if (e.type === 'mousemove') {
+      const mouseEvent = e as React.MouseEvent<HTMLCanvasElement>;
+      ctx.lineTo(mouseEvent.nativeEvent.offsetX, mouseEvent.nativeEvent.offsetY);
+    } else if (e.type === 'touchmove') {
+      const touchEvent = e as React.TouchEvent<HTMLCanvasElement>;
+      const touch = touchEvent.touches[0];
+      const rect = canvas.getBoundingClientRect();
+      ctx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
+    }
+
     ctx.stroke();
   }
 
@@ -417,6 +440,10 @@ const Home = () => {
         onMouseLeave={stopDrawing}
         onMouseOut={stopDrawing}
         onMouseMove={draw}
+        onTouchStart={startDrawing}
+        onTouchEnd={stopDrawing}
+        onTouchCancel={stopDrawing}
+        onTouchMove={draw}
       />
 
       {expression && expression.map((latex, index) => (
