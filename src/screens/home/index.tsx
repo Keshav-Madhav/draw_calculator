@@ -1,10 +1,8 @@
 import { useEffect, useRef, useState } from "react"
 import { SWATCHES } from "@/constanst"
-import { ColorSwatch, Group, Image } from "@mantine/core"
-import { Button } from "@/components/ui/button"
 import axios from "axios";
 import Draggable from "react-draggable";
-import { Slider } from "@/components/ui/slider"
+import TopNavBar from "@/components/TopNavBar";
 
 interface Response {
   expr: string
@@ -39,7 +37,7 @@ const Home = () => {
   useEffect(() => {
     if (measureRef.current) {
       const width = measureRef.current.offsetWidth;
-      setInputWidth(Math.max(240, width + 20)); // Add some padding
+      setInputWidth(Math.max(240, width + 20));
     }
   }, [text]);
 
@@ -353,83 +351,17 @@ const Home = () => {
 
   return (
     <>
-    <div className="flex items-center justify-around gap-6 h-14 px-6 bg-gray-800 z-20">
-      <Button
-        onClick={() => setReset(true)}
-        className="z-20 bg-black w-fit h-10"
-        variant='default'
-        color="black"
-      >
-        <Image src="/undo.png" alt="Reset" className="w-10 h-12" />
-        <p className="font-sans text-3xl text-[#574a3a]">Reset</p>
-      </Button>
-      
-      <Button 
-        onClick={() => setInsertText(true)}
-        className="z-20 bg-black w-fit h-10 flex gap-1 items-center"
-        variant='default'
-        color="black"
-      >
-        <Image src="/text.png" alt="Text" className="w-7 h-7" />
-        <p className="font-sans text-3xl text-[#d6a426]">Text</p>
-      </Button>
-
-      <Button
-        onClick={() => setColor('black')}
-        className="z-20 bg-black w-fit h-10 flex items-center gap-2"
-        variant='default'
-        color="black"
-      >
-        <Image src="/eraser.png" alt="Eraser" className="w-8 h-6" />
-        <p className="font-sans text-2xl text-[#f6b2c7]">Eraser</p>
-      </Button>
-
-      <Group className="z-20 flex flex-nowrap">
-        {SWATCHES.map((swatch, index) => (
-          <ColorSwatch
-            key={index}
-            color={swatch}
-            onClick={() => setColor(swatch)}
-            className="cursor-pointer"
-          />
-        ))}
-      </Group> 
-
-      <div className="flex gap-2 items-center w-[15rem]">
-        <p className="text-white font-sans text-sm">Width: </p>
-
-        <Slider 
-          defaultValue={[strokeWidth]}
-          onValueChange={(value) => setStrokeWidth(value[0])}
-          min={1}
-          max={20} 
-          step={1} 
-          className="w-[10rem]"
-        />
-
-        <p className="text-white font-sans text-2xl">{strokeWidth}</p>
-      </div>
-
-      <Button
-        onClick={downloadCanvasAsImage}
-        className="z-20 bg-black w-fit h-10"
-        variant='default'
-        color="black"
-      >
-        <Image src="/download.png" alt="download" className="w-9 h-9" />
-        <p className="font-sans text-2xl text-[#b7eb32]">Download</p>
-      </Button>
-      
-      <Button
-        onClick={sendData}
-        className="z-20 bg-gray-300 hover:bg-gray-400 w-fit h-10 font-sans flex items-center gap-2"
-        variant='default'
-        color="black"
-      >
-        <Image src="/equal.png" alt="Calculate" className="w-8 h-8" />
-        <p className="font-sans text-3xl text-black">{loading ? 'Loading...' : 'Calculate'}</p>
-      </Button>
-    </div>
+      <TopNavBar 
+        setReset={setReset}
+        setInsertText={setInsertText}
+        setColor={setColor}
+        setStrokeWidth={setStrokeWidth}
+        downloadCanvasAsImage={downloadCanvasAsImage}
+        sendData={sendData}
+        color={color}
+        strokeWidth={strokeWidth}
+        loading={loading}
+      />
 
       <canvas 
         ref={canvasRef}
